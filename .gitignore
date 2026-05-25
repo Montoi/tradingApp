@@ -1,8 +1,15 @@
-# Dependencies
+# Node.js
 node_modules/
 
 # Build output
 dist/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
 
 # Runtime output (frames & audio captured from streams)
 output/
