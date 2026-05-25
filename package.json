@@ -1,0 +1,25 @@
+{
+  "name": "tradingappnode",
+  "version": "1.0.0",
+  "description": "Hybrid YouTube Live trading stream analyzer — ingestion layer",
+  "main": "dist/extractor.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/extractor.ts",
+    "build": "tsc",
+    "start": "node dist/extractor.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["trading", "youtube", "ffmpeg", "streamlink"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.3"
+  }
+}
