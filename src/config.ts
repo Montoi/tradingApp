@@ -28,7 +28,7 @@ export const defaultConfig: ExtractorConfig = {
   // JPEG quality scale: 1 (best) – 31 (worst). 2 gives HQ frames.
   frameJpegQuality: 2,
 
-  // Auto-retry when stream drops: wait 5s, retry indefinitely (0 = ∞)
-  retryDelayMs: 5_000,
+  // Auto-retry when stream drops (or is offline): wait 5 minutes, retry indefinitely (0 = ∞)
+  retryDelayMs: 300_000,
   maxRetries:   0,
 };

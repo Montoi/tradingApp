@@ -6,11 +6,18 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/extractor.ts",
+    "ai": ".\\venv\\Scripts\\python.exe processor.py",
+    "api": "node server.js",
     "build": "tsc",
     "start": "node dist/extractor.js",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["trading", "youtube", "ffmpeg", "streamlink"],
+  "keywords": [
+    "trading",
+    "youtube",
+    "ffmpeg",
+    "streamlink"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -20,6 +27,8 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "fluent-ffmpeg": "^2.1.3"
   }
 }

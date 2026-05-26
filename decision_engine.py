@@ -94,7 +94,11 @@ class DecisionEngine:
             self._execute_order("ABRIR", direccion, activo, data)
             self.active_trades[activo] = {
                 "direccion": direccion,
-                "timestamp": now.isoformat()
+                "timestamp": now.isoformat(),
+                "precio_entrada": data.get("precio_entrada", 0),
+                "stop_loss": data.get("stop_loss", 0),
+                "take_profit": data.get("take_profit", 0),
+                "razon_tecnica": data.get("razon_tecnica", "N/A")
             }
             self._save_state()
             # Cooldown después de entrar para evitar re-entradas inmediatas

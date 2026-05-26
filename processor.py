@@ -107,8 +107,11 @@ Se te proporciona:
   2. Contexto de audio (transcripción): {transcript_context}
 
 Instrucciones Críticas:
-- Ignora el idioma del audio, extrae solo el análisis técnico que el streamer describe.
-- Analiza la imagen para validar lo que dice el audio basándote en velas e indicadores.
+- Realiza TU PROPIO análisis técnico puramente visual basándote en la acción del precio, velas, soportes, resistencias e indicadores visibles en la imagen.
+- ¡MUY IMPORTANTE!: Presta especial atención a si el streamer acaba de abrir una operación visualmente (ej. dibujó una herramienta de Posición Larga/Corta de TradingView, o se ve una orden abierta en un exchange como Binance/Bybit). Si ves una posición claramente abierta en pantalla, extrae esos datos (Entrada, SL, TP) aunque el audio no diga nada al respecto.
+- Si hay contexto de audio (transcripción), compáralo con tu propio análisis. NO entres en LONG o SHORT solo porque el audio lo diga. Si tu análisis visual contradice el audio, declara NEUTRAL o descártalo.
+- ¡ENFOQUE SCALPING!: El usuario es un Scalper. Si el streamer o el gráfico sugieren un trade de largo plazo o "Swing", DEBES adaptar la señal para Scalping. Calcula un Take Profit (TP) mucho más cercano (el próximo soporte/resistencia inmediato) y un Stop Loss (SL) muy ajustado. No permitas trades con rangos amplios.
+- Si NO hay transcripción de audio o es irrelevante, actúa de manera 100% autónoma. Analiza las líneas trazadas, los textos en pantalla y la estructura del gráfico para tomar una decisión.
 - Retorna ÚNICAMENTE un objeto JSON válido con esta estructura estricta y transaccional:
 
 {{
@@ -117,7 +120,7 @@ Instrucciones Críticas:
   "precio_entrada": 0.0,
   "stop_loss": 0.0,
   "take_profit": 0.0,
-  "razon_tecnica": "Explicación técnica y breve (velas, RSI, EMAs y validación del audio)"
+  "razon_tecnica": "Explica brevemente tu propio análisis técnico (velas, RSI, EMAs) y, si aplica, cómo coincide o contradice el audio"
 }}"""
 
 
