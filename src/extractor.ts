@@ -35,9 +35,17 @@ import type { ExtractorConfig, PipelineStats } from './types/index.js';
 
 // ─── Directory Setup ──────────────────────────────────────────────────────────
 
-function prepareOutputDirs(outputDir: string): { framesDir: string; audioDir: string } {
+/**
+ * Ensures the required output directories exist and are completely clean.
+ * This prevents the AI from analyzing leftover frames/audio from previous sessions.
+ */
+function ensureDirectories(outputDir: string) {
   const framesDir = path.join(outputDir, 'frames');
   const audioDir  = path.join(outputDir, 'audio');
+
+  // Clear existing directories to avoid ghost trades
+  if (fs.existsSync(framesDir)) { fs.rmSync(framesDir, { recursive: true, force: true }); }
+  if (fs.existsSync(audioDir)) { fs.rmSync(audioDir, { recursive: true, force: true }); }
 
   fs.mkdirSync(framesDir, { recursive: true });
   fs.mkdirSync(audioDir,  { recursive: true });
@@ -197,7 +205,7 @@ async function run(cfg: ExtractorConfig): Promise<void> {
   logger.info('');
 
   // ── Prepare output directories (once, reused across retries) ───────────────
-  const { framesDir, audioDir } = prepareOutputDirs(cfg.outputDir);
+  const { framesDir, audioDir } = ensureDirectories(cfg.outputDir);
   logger.success(`Frames → ${framesDir}`);
   logger.success(`Audio  → ${audioDir}`);
   logger.info('');
