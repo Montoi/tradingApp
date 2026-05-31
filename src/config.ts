@@ -6,8 +6,8 @@ import type { ExtractorConfig } from './types/index.js';
  * The YouTube URL is read from the first CLI argument at runtime.
  */
 export const defaultConfig: ExtractorConfig = {
-  // Passed as CLI arg: npm run dev -- <youtube-url>
-  youtubeUrl: process.argv[2] ?? '',
+  // Passed as CLI arg: npm run dev -- <youtube-url> or via YOUTUBE_URL env var
+  youtubeUrl: process.env.YOUTUBE_URL || process.argv[2] || '',
 
   // All output files land under ./output/
   outputDir: path.resolve('output'),
@@ -30,5 +30,5 @@ export const defaultConfig: ExtractorConfig = {
 
   // Auto-retry when stream drops (or is offline): wait 5 minutes, retry indefinitely (0 = ∞)
   retryDelayMs: 300_000,
-  maxRetries:   0,
+  maxRetries: 0,
 };

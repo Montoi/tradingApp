@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  ingestion:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_ingestion
+    restart: unless-stopped
+    volumes:
+      # Conecta la carpeta /app/output del contenedor al volumen compartido
+      - shared_output:/app/output  
+    environment:
+      - NODE_ENV=production
+      # Inyectamos la URL directamente desde aquí. Puedes cambiarla cuando quieras.
+      - YOUTUBE_URL=https://www.youtube.com/@NombreDelStreamer/live 
+
+  ai_processor:
+    build: 
+      context: .
+      dockerfile: dockerfile.ai
+    container_name: trading_ai_processor
+    restart: unless-stopped
+    volumes:
+      # Conecta el mismo volumen compartido para que Python lea lo que Node guardó
+      - shared_output:/app/output  
+    environment:
+      # Lee tus claves desde el archivo .env oculto en tu servidor
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    depends_on:
+      - ingestion
+
+volumes:
+  shared_output: # Define el volumen físico en el disco NVMe de Contabo
