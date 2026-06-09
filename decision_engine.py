@@ -8,8 +8,9 @@ from execution import send_telegram_alert
 log = logging.getLogger(__name__)
 
 class DecisionEngine:
-    def __init__(self, stream_id: str, required_confirmations: int = 2, cooldown_minutes: int = 15):
+    def __init__(self, stream_id: str, streamer_name: str = None, required_confirmations: int = 2, cooldown_minutes: int = 15):
         self.stream_id = stream_id
+        self.streamer_name = streamer_name or stream_id
         self.required_confirmations = required_confirmations
         self.cooldown_minutes = cooldown_minutes
         
@@ -136,6 +137,7 @@ class DecisionEngine:
         razon = context.get("razon_tecnica", "N/A")
         
         msg = f"\n{icono} [TRADE ALERT] {accion} {direccion} | {activo}\n"
+        msg += f"📺 Streamer: {self.streamer_name}\n"
         if accion == "ABRIR":
             msg += f"💰 Entrada: {precio} | SL: {sl} | TP: {tp}\n"
         msg += f"🧠 Razón: {razon}\n"

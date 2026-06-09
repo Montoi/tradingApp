@@ -100,7 +100,7 @@ def sync_transcribe(audio_path: str) -> str:
             log.error(f"Whisper transcription error: {e}")
             return ""
 
-def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streamer_config: dict):
+def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streamer_config: dict, streamer_name: str):
     """Synchronous Gemini analysis with full streamer context."""
     if not genai_client:
         return
@@ -227,7 +227,7 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streame
         
         # Pass to decision engine
         if stream_id not in stream_engines:
-            stream_engines[stream_id] = DecisionEngine(stream_id)
+            stream_engines[stream_id] = DecisionEngine(stream_id, streamer_name=streamer_name)
             
         stream_engines[stream_id].process_signal(data)
         
@@ -240,18 +240,21 @@ async def process_stream(stream_id: str):
 
     # Fetch the streamer's config from the orchestrator API
     streamer_config = {}
+    streamer_name = stream_id
     try:
-        def fetch_config():
+        def fetch_streamer_info():
             import urllib.request
             url = f"{ORCHESTRATOR_URL}/api/streamers"
             with urllib.request.urlopen(url, timeout=5) as res:
                 streamers = json.loads(res.read().decode())
                 for s in streamers:
                     if s.get('stream_id') == stream_id:
-                        return s.get('config_json') or {}
+                        return s
             return {}
-        streamer_config = await asyncio.get_running_loop().run_in_executor(executor, fetch_config)
-        log.info(f"[{stream_id}] Config loaded: focus={streamer_config.get('streamFocus','?')} assets={streamer_config.get('assets','?')}")
+        streamer_info = await asyncio.get_running_loop().run_in_executor(executor, fetch_streamer_info)
+        streamer_config = streamer_info.get('config_json') or {}
+        streamer_name = streamer_info.get('name') or stream_id
+        log.info(f"[{stream_id}] Config loaded: name={streamer_name} focus={streamer_config.get('streamFocus','?')} assets={streamer_config.get('assets','?')}")
     except Exception as e:
         log.warning(f"[{stream_id}] Could not fetch streamer config: {e}. Using defaults.")
     
@@ -289,7 +292,7 @@ async def process_stream(stream_id: str):
                         transcript = stream_transcripts.get(stream_id, "")
                         # Offload Gemini to thread pool
                         await asyncio.get_running_loop().run_in_executor(
-                            executor, sync_analyze_frame, stream_id, str(latest_jpg), transcript, streamer_config
+                            executor, sync_analyze_frame, stream_id, str(latest_jpg), transcript, streamer_config, streamer_name
                         )
                         last_processed_frame = latest_jpg
                         
