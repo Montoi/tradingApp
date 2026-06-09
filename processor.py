@@ -118,9 +118,9 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streame
         tracks_entries     = streamer_config.get('tracksEntries', True)
 
         focus_map = {
-            'entries':       'El streamer ejecuta operaciones reales en pantalla.',
-            'analysis-only': 'El streamer solo analiza el gráfico, NO ejecuta operaciones.',
-            'educational':   'El streamer explica contexto y sesgo del mercado. NO hay entradas en vivo.',
+            'entries':       'El streamer ejecuta operaciones reales. Usa sus entradas como base, pero VALÍDALAS con tu propio análisis técnico.',
+            'analysis-only': 'El streamer muestra gráficos e indicadores, pero no ejecuta trades. ERES UN TRADER AUTÓNOMO: analiza los indicadores en pantalla y toma TUS PROPIAS decisiones de trade.',
+            'educational':   'El streamer explica contexto. ERES UN TRADER AUTÓNOMO: analiza la estructura y ejecuta TUS PROPIOS trades si ves una oportunidad clara.',
         }
         focus_desc = focus_map.get(stream_focus, focus_map['entries'])
 
@@ -156,8 +156,8 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streame
         2. El SL mínimo debe ser al menos el 0.3% del precio de entrada para crypto, 
            o al menos 3 pips para forex (XAU/USD = mínimo $1.50 de distancia).
         3. El RR (Risk/Reward) debe ser de al menos 1.5:1. Si no hay TP visible con ese RR, direccion = NEUTRAL.
-        4. Si el gráfico no muestra una señal clara o el streamer dice NEUTRAL/sin señal, devuelve direccion = NEUTRAL.
-        5. Si el foco es 'solo analiza' o 'educativo', devuelve SIEMPRE direccion = NEUTRAL.
+        4. Si el foco es 'solo analiza' o 'educativo', NO esperes una señal explícita del streamer. Ejecuta TUS PROPIOS trades basados en los indicadores y la acción del precio que ves.
+        5. Si la estructura del mercado no es clara o no hay una oportunidad evidente de alta probabilidad, devuelve direccion = NEUTRAL.
         6. DETECTA LA TEMPORALIDAD: Observa la interfaz de TradingView (o similar) y extrae la temporalidad actual del gráfico (ej. 1m, 5m, 15m, 1H, 4H, 1D). Si no es visible, asume "desconocida".
 
         === RESPUESTA ===
