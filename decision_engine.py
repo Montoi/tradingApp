@@ -56,10 +56,28 @@ class DecisionEngine:
 
         now = datetime.now()
         
+        # Dynamic Timeframe Adjustments
+        temporalidad = data.get("temporalidad", "").lower()
+        dyn_cooldown = self.cooldown_minutes
+        dyn_confirm = self.required_confirmations
+
+        if temporalidad in ['1m', '3m', '5m']:
+            dyn_cooldown = 5
+            dyn_confirm = 3
+        elif temporalidad in ['15m', '30m']:
+            dyn_cooldown = 15
+            dyn_confirm = 2
+        elif temporalidad in ['1h', '2h', '4h']:
+            dyn_cooldown = 60
+            dyn_confirm = 2
+        elif temporalidad in ['1d', '1w']:
+            dyn_cooldown = 240
+            dyn_confirm = 1
+
         # Check cooldown
         if activo in self.cooldowns:
             if now < self.cooldowns[activo]:
-                log.debug(f"[ENGINE] Ignorando {activo} (En cooldown por {self.cooldown_minutes} mins)")
+                log.debug(f"[ENGINE] Ignorando {activo} (En cooldown)")
                 return
             else:
                 del self.cooldowns[activo]
@@ -70,7 +88,7 @@ class DecisionEngine:
             if trade_actual == direccion:
                 log.info(f"🛡️ [ESCUDO] Ya estamos {direccion} en {activo}. Señal repetida ignorada.")
                 # Activamos el cooldown para no seguir evaluando lo mismo
-                self.cooldowns[activo] = now + timedelta(minutes=self.cooldown_minutes)
+                self.cooldowns[activo] = now + timedelta(minutes=dyn_cooldown)
                 return
             else:
                 # Señal opuesta => Cerramos el trade actual
@@ -89,10 +107,10 @@ class DecisionEngine:
         
         self.pending_signals[activo] = pending
         
-        log.info(f"🚦 [ENGINE] {activo} -> {direccion} (Confirmación {pending['count']}/{self.required_confirmations})")
+        log.info(f"🚦 [ENGINE] {activo} -> {direccion} (Confirmación {pending['count']}/{dyn_confirm}) [TF: {temporalidad or '?'}]")
         
         # Ejecutar orden si cumple confirmaciones
-        if pending["count"] >= self.required_confirmations:
+        if pending["count"] >= dyn_confirm:
             self._execute_order("ABRIR", direccion, activo, data)
             self.active_trades[activo] = {
                 "direccion": direccion,
@@ -104,7 +122,7 @@ class DecisionEngine:
             }
             self._save_state()
             # Cooldown después de entrar para evitar re-entradas inmediatas
-            self.cooldowns[activo] = now + timedelta(minutes=self.cooldown_minutes)
+            self.cooldowns[activo] = now + timedelta(minutes=dyn_cooldown)
             del self.pending_signals[activo]
 
     def _execute_order(self, accion: str, direccion: str, activo: str, context: dict):

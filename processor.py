@@ -100,8 +100,8 @@ def sync_transcribe(audio_path: str) -> str:
             log.error(f"Whisper transcription error: {e}")
             return ""
 
-def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str):
-    """Synchronous Gemini analysis"""
+def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str, streamer_config: dict):
+    """Synchronous Gemini analysis with full streamer context."""
     if not genai_client:
         return
         
@@ -109,22 +109,68 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str):
         # Load image bytes
         with open(frame_path, 'rb') as f:
             image_bytes = f.read()
-            
+
+        # Build context from the streamer's profile
+        assets_monitored   = ', '.join(streamer_config.get('assets', ['Desconocido']))
+        stream_focus       = streamer_config.get('streamFocus', 'entries')
+        commentary_mode    = streamer_config.get('commentaryMode', 'spoken')
+        notes              = streamer_config.get('notes', '').strip()
+        tracks_entries     = streamer_config.get('tracksEntries', True)
+
+        focus_map = {
+            'entries':       'El streamer ejecuta operaciones reales en pantalla.',
+            'analysis-only': 'El streamer solo analiza el gráfico, NO ejecuta operaciones.',
+            'educational':   'El streamer explica contexto y sesgo del mercado. NO hay entradas en vivo.',
+        }
+        focus_desc = focus_map.get(stream_focus, focus_map['entries'])
+
+        audio_map = {
+            'spoken': 'El streamer habla continuamente. La transcripción es muy relevante.',
+            'mixed':  'El streamer habla ocasionalmente. Usa la transcripción cuando esté disponible.',
+            'silent': 'El stream no tiene voz. Ignora la transcripción y enfocate solo en el gráfico.',
+        }
+        audio_desc = audio_map.get(commentary_mode, audio_map['spoken'])
+
+        notes_section = f'Instrucciones adicionales del usuario: "{notes}"' if notes else ''
+
         prompt = f"""
-        Eres un analista de trading profesional viendo un stream en vivo.
-        Revisa este frame del stream.
-        Transcripción reciente del audio del streamer: "{transcript}"
-        
-        Extrae y devuelve un JSON estricto con la siguiente estructura:
+        Eres un motor de análisis de trading que observa un stream en vivo.
+
+        === PERFIL DEL STREAMER ===
+        - Activos que opera: {assets_monitored}
+        - Foco: {focus_desc}
+        - Audio: {audio_desc}
+        - Registra entradas reales: {'Sí' if tracks_entries else 'No'}
+        {notes_section}
+
+        === TRANSCRIPCIóN RECIENTE DEL AUDIO ===
+        "{transcript if transcript else 'Sin audio disponible.'}"
+
+        === INSTRUCCIONES DE ANÁLISIS ===
+        Observa el frame del gráfico y la transcripción. Determina si hay una señal de trading válida.
+
+        REGLAS ESTRICTAS para Stop Loss y Take Profit:
+        1. El SL debe colocarse FUERA de la estructura del precio, no dentro de la vela actual.
+           - Para LONG: SL debe estar DEBAJO del mínimo del último swing relevante.
+           - Para SHORT: SL debe estar ENCIMA del máximo del último swing relevante.
+        2. El SL mínimo debe ser al menos el 0.3% del precio de entrada para crypto, 
+           o al menos 3 pips para forex (XAU/USD = mínimo $1.50 de distancia).
+        3. El RR (Risk/Reward) debe ser de al menos 1.5:1. Si no hay TP visible con ese RR, direccion = NEUTRAL.
+        4. Si el gráfico no muestra una señal clara o el streamer dice NEUTRAL/sin señal, devuelve direccion = NEUTRAL.
+        5. Si el foco es 'solo analiza' o 'educativo', devuelve SIEMPRE direccion = NEUTRAL.
+        6. DETECTA LA TEMPORALIDAD: Observa la interfaz de TradingView (o similar) y extrae la temporalidad actual del gráfico (ej. 1m, 5m, 15m, 1H, 4H, 1D). Si no es visible, asume "desconocida".
+
+        === RESPUESTA ===
+        Responde SOLAMENTE con este JSON válido (sin markdown, sin texto extra):
         {{
-            "activo": "BTC/USDT", 
+            "activo": "BTC/USDT",
+            "temporalidad": "15m",
             "direccion": "LONG" | "SHORT" | "NEUTRAL",
             "precio_entrada": 65000.50,
-            "stop_loss": 64000.00,
-            "take_profit": 67000.00,
-            "razon_tecnica": "Explicación breve de por qué."
+            "stop_loss": 64700.00,
+            "take_profit": 65750.00,
+            "razon_tecnica": "Descripción clara de por qué esta entrada, dónde está el SL y por qué."
         }}
-        Solo responde con el JSON, sin formato markdown.
         """
         
         response = genai_client.models.generate_content(
@@ -137,6 +183,47 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str):
         
         text = response.text.replace('```json', '').replace('```', '').strip()
         data = json.loads(text)
+
+        # Basic sanity check on SL distance before passing to decision engine
+        direccion = data.get('direccion', 'NEUTRAL').upper()
+        entrada   = float(data.get('precio_entrada', 0) or 0)
+        sl        = float(data.get('stop_loss', 0) or 0)
+        tp        = float(data.get('take_profit', 0) or 0)
+        activo    = data.get('activo', '').upper()
+        temporalidad = data.get('temporalidad', '').lower()
+
+        # Parse timeframe
+        min_sl_pct = 0.3  # Default crypto
+        min_sl_usd = 1.5  # Default forex
+
+        if temporalidad in ['1m', '3m', '5m']:
+            min_sl_pct, min_sl_usd = 0.1, 0.5
+        elif temporalidad in ['15m', '30m']:
+            min_sl_pct, min_sl_usd = 0.3, 1.5
+        elif temporalidad in ['1h', '2h', '4h']:
+            min_sl_pct, min_sl_usd = 0.7, 3.0
+        elif temporalidad in ['1d', '1w']:
+            min_sl_pct, min_sl_usd = 1.5, 8.0
+
+        if direccion in ('LONG', 'SHORT') and entrada > 0 and sl > 0:
+            sl_dist = abs(entrada - sl)
+            sl_pct = sl_dist / entrada * 100
+            rr = abs(tp - entrada) / sl_dist if sl_dist > 0 else 0
+
+            # Check SL
+            is_forex = 'USD' in activo and 'BTC' not in activo and 'ETH' not in activo
+            if is_forex:
+                if sl_dist < min_sl_usd:
+                    log.warning(f"[{stream_id}] SL muy ajustado para forex/commodities en {temporalidad} (${sl_dist:.2f} < ${min_sl_usd}). Señal descartada.")
+                    data['direccion'] = 'NEUTRAL'
+            else:
+                if sl_pct < min_sl_pct:
+                    log.warning(f"[{stream_id}] SL muy ajustado para crypto en {temporalidad} ({sl_pct:.3f}% < {min_sl_pct}%). Señal descartada.")
+                    data['direccion'] = 'NEUTRAL'
+
+            if rr < 1.2:        # RR below 1.2 — not worth the trade
+                log.warning(f"[{stream_id}] RR insuficiente ({rr:.2f}:1). Señal descartada.")
+                data['direccion'] = 'NEUTRAL'
         
         # Pass to decision engine
         if stream_id not in stream_engines:
@@ -150,9 +237,26 @@ def sync_analyze_frame(stream_id: str, frame_path: str, transcript: str):
 async def process_stream(stream_id: str):
     """Async loop running for a specific stream."""
     log.info(f"[{stream_id}] Started monitoring.")
+
+    # Fetch the streamer's config from the orchestrator API
+    streamer_config = {}
+    try:
+        def fetch_config():
+            import urllib.request
+            url = f"{ORCHESTRATOR_URL}/api/streamers"
+            with urllib.request.urlopen(url, timeout=5) as res:
+                streamers = json.loads(res.read().decode())
+                for s in streamers:
+                    if s.get('stream_id') == stream_id:
+                        return s.get('config_json') or {}
+            return {}
+        streamer_config = await asyncio.get_running_loop().run_in_executor(executor, fetch_config)
+        log.info(f"[{stream_id}] Config loaded: focus={streamer_config.get('streamFocus','?')} assets={streamer_config.get('assets','?')}")
+    except Exception as e:
+        log.warning(f"[{stream_id}] Could not fetch streamer config: {e}. Using defaults.")
     
     frames_dir = OUTPUT_DIR / stream_id / 'frames'
-    audio_dir = OUTPUT_DIR / stream_id / 'audio'
+    audio_dir  = OUTPUT_DIR / stream_id / 'audio'
     
     last_processed_frame = None
     last_processed_audio = None
@@ -185,7 +289,7 @@ async def process_stream(stream_id: str):
                         transcript = stream_transcripts.get(stream_id, "")
                         # Offload Gemini to thread pool
                         await asyncio.get_running_loop().run_in_executor(
-                            executor, sync_analyze_frame, stream_id, str(latest_jpg), transcript
+                            executor, sync_analyze_frame, stream_id, str(latest_jpg), transcript, streamer_config
                         )
                         last_processed_frame = latest_jpg
                         

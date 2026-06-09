@@ -9,6 +9,7 @@ datasource db {
 
 model Streamer {
   id          String   @id @default(uuid())
+  name        String
   stream_id   String   @unique
   url         String
   is_active   Boolean  @default(false)
