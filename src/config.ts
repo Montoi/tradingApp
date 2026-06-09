@@ -9,8 +9,8 @@ export const defaultConfig: ExtractorConfig = {
   // Passed as CLI arg: npm run dev -- <youtube-url> or via YOUTUBE_URL env var
   youtubeUrl: process.env.YOUTUBE_URL || process.argv[2] || '',
 
-  // All output files land under ./output/
-  outputDir: path.resolve('output'),
+  // All output files land under ./output/[STREAM_ID]/
+  outputDir: path.resolve('output', process.env.STREAM_ID || 'default'),
 
   // 1 frame/sec is enough for chart analysis without overwhelming storage
   videoFps: 1,

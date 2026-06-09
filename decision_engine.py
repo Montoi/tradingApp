@@ -8,7 +8,8 @@ from execution import send_telegram_alert
 log = logging.getLogger(__name__)
 
 class DecisionEngine:
-    def __init__(self, required_confirmations: int = 2, cooldown_minutes: int = 15):
+    def __init__(self, stream_id: str, required_confirmations: int = 2, cooldown_minutes: int = 15):
+        self.stream_id = stream_id
         self.required_confirmations = required_confirmations
         self.cooldown_minutes = cooldown_minutes
         
@@ -21,7 +22,7 @@ class DecisionEngine:
         # Cooldowns: { "BTC/USDT": datetime }
         self.cooldowns = {}
         
-        self.state_file = "output/state.json"
+        self.state_file = f"output/state_{self.stream_id}.json"
         self.history_file = "output/signals_history.jsonl"
         self._load_state()
 
@@ -44,6 +45,7 @@ class DecisionEngine:
             log.error(f"[ENGINE] Error guardando estado: {e}")
 
     def process_signal(self, data: dict):
+        data['stream_id'] = self.stream_id
         self._log_signal_to_file(data)
         
         activo = data.get("activo", "").upper()

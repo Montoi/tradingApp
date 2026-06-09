@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Streamer {
+  id          String   @id @default(uuid())
+  stream_id   String   @unique
+  url         String
+  is_active   Boolean  @default(false)
+  config_json Json?
+  updated_at  DateTime @updatedAt
+}

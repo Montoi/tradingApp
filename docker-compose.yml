@@ -1,36 +1,64 @@
 version: '3.8'
 
 services:
-  ingestion:
-    build: 
+  database:
+    image: postgres:15-alpine
+    container_name: trading_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: tradingdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  orchestrator:
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: trading_ingestion
+    container_name: trading_orchestrator
     restart: unless-stopped
-    volumes:
-      # Conecta la carpeta /app/output del contenedor al volumen compartido
-      - shared_output:/app/output  
+    init: true # CRÍTICO: Gestiona el ciclo de vida de los procesos hijos (PIDs huérfanos)
+    ports:
+      - "3001:3001"
     environment:
       - NODE_ENV=production
-      # Inyectamos la URL directamente desde aquí. Puedes cambiarla cuando quieras.
-      - YOUTUBE_URL=https://www.youtube.com/@NombreDelStreamer/live 
+      - DATABASE_URL=postgresql://admin:secretpassword@database:5432/tradingdb?schema=public
+    volumes:
+      - shared_output:/app/output
+    depends_on:
+      - database
+    command: >
+      sh -c "npx prisma db push && npm run api"
 
   ai_processor:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.ai
     container_name: trading_ai_processor
     restart: unless-stopped
     volumes:
-      # Conecta el mismo volumen compartido para que Python lea lo que Node guardó
-      - shared_output:/app/output  
+      - shared_output:/app/output
     environment:
-      # Lee tus claves desde el archivo .env oculto en tu servidor
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ORCHESTRATOR_URL=http://orchestrator:3001
+    env_file:
+      - .env
     depends_on:
-      - ingestion
+      - orchestrator
+
+  frontend:
+    build:
+      context: ../tradingAppReact
+      dockerfile: Dockerfile
+    container_name: trading_frontend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - orchestrator
 
 volumes:
-  shared_output: # Define el volumen físico en el disco NVMe de Contabo
+  shared_output:
+  pgdata:

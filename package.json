@@ -23,10 +23,12 @@
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^22.0.0",
+    "prisma": "^5.14.0",
     "tsx": "^4.19.2",
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@prisma/client": "^5.14.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "fluent-ffmpeg": "^2.1.3"
