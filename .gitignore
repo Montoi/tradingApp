@@ -26,3 +26,6 @@ Thumbs.db
 .vscode/
 *.suo
 *.user
+
+# Credentials and local config
+youtube-cookies.txt

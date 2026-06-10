@@ -27,7 +27,8 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:secretpassword@database:5432/tradingdb?schema=public
     volumes:
-      - shared_output:/app/output
+      - ./output:/app/output
+      - ./youtube-cookies.txt:/app/youtube-cookies.txt
     depends_on:
       - database
     command: >
@@ -40,7 +41,8 @@ services:
     container_name: trading_ai_processor
     restart: unless-stopped
     volumes:
-      - shared_output:/app/output
+      - ./output:/app/output
+      - ./youtube-cookies.txt:/app/youtube-cookies.txt
     environment:
       - ORCHESTRATOR_URL=http://orchestrator:3001
     env_file:
